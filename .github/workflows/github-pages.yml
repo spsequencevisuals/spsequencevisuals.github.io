@@ -1,0 +1,60 @@
+name: Import SP portfolio source
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify and restore the complete source
+        run: |
+          python3 <<'PY'
+          from pathlib import Path, PurePosixPath
+          import hashlib, os, shutil, stat, subprocess, tempfile, zipfile
+          
+          if os.environ.get('GITHUB_REPOSITORY') != 'spsequencevisuals/spsequencevisuals.github.io':
+              raise SystemExit('This import is restricted to the SP portfolio repository.')
+          if os.environ.get('GITHUB_REF') != 'refs/heads/main':
+              raise SystemExit('Run this import on main.')
+          parts = sorted(Path('.').glob('sp-portfolio-source.part-*'))
+          if len(parts) != 15:
+              raise SystemExit('The full source package has not been uploaded.')
+          with tempfile.TemporaryDirectory() as temporary:
+              bundle = Path(temporary) / 'source.zip'
+              digest = hashlib.sha256()
+              with bundle.open('wb') as destination:
+                  for part in parts:
+                      data = part.read_bytes()
+                      digest.update(data)
+                      destination.write(data)
+              if digest.hexdigest() != 'a5624b1cb5718c60a3bdea349b8bd4bdb3a269571ddd2bbb470f41b2c984ad5b':
+                  raise SystemExit('Source package checksum mismatch.')
+              filenames = []
+              with zipfile.ZipFile(bundle) as archive:
+                  for entry in archive.infolist():
+                      name = PurePosixPath(entry.filename)
+                      if name.is_absolute() or '..' in name.parts or name.parts[0] in {'.git', '.github', '.openai'}:
+                          raise SystemExit('Unexpected path in source package.')
+                      if entry.is_dir() or stat.S_ISLNK(entry.external_attr >> 16):
+                          raise SystemExit('Unexpected file type in source package.')
+                      target = Path(*name.parts)
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      with archive.open(entry) as src, target.open('wb') as dst:
+                          shutil.copyfileobj(src, dst)
+                      if (entry.external_attr >> 16) & 0o111:
+                          target.chmod(0o755)
+                      filenames.append(str(target))
+              if len(filenames) != 252:
+                  raise SystemExit('Source file count mismatch.')
+              for part in parts:
+                  part.unlink()
+              subprocess.run(['git', 'add', '-f', '--', *filenames], check=True)
+              subprocess.run(['git', 'add', '-u', '--', *map(str, parts)], check=True)
+              subprocess.run(['git', '-c', 'user.name=github-actions[bot]', '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com', 'commit', '-m', 'Import complete SP Sequence Visuals portfolio source and media'], check=True)
+              subprocess.run(['git', 'push', 'origin', 'HEAD:main'], check=True)
+          PY
