@@ -1,67 +1,42 @@
-name: Import SP portfolio source
+name: Publish SP Sequence Visuals to GitHub Pages
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
 jobs:
-  import:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
-      - name: Verify and restore the complete source
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/configure-pages@v5
+      - name: Build portable portfolio
         env:
-          SOURCE_ARCHIVE_URL: https://github.com/spsequencevisuals/spsequencevisuals.github.io/releases/download/portfolio-source-2026-11-12/SP-Sequence-Visuals-Source-2026-11-12.zip
+          REPOSITORY: ${{ github.repository }}
         run: |
-          python3 <<'PY'
-          from pathlib import Path, PurePosixPath
-          import hashlib, os, shutil, stat, subprocess, tempfile, zipfile
-          from urllib.request import urlopen
-          
-          if os.environ.get('GITHUB_REPOSITORY') != 'spsequencevisuals/spsequencevisuals.github.io':
-              raise SystemExit('This import is restricted to the SP portfolio repository.')
-          if os.environ.get('GITHUB_REF') != 'refs/heads/main':
-              raise SystemExit('Run this import on main.')
-          with tempfile.TemporaryDirectory() as temporary:
-              bundle = Path(temporary) / 'source.zip'
-              digest = hashlib.sha256()
-              with urlopen(os.environ['SOURCE_ARCHIVE_URL'], timeout=120) as response, bundle.open('wb') as destination:
-                  while data := response.read(8 * 1024 * 1024):
-                      digest.update(data)
-                      destination.write(data)
-              if digest.hexdigest() != '196b77618f21673eca95e26dc40ebbc34f1dcdd8608db205c6b10549f016a3e8':
-                  raise SystemExit('Source package checksum mismatch.')
-              filenames = []
-              with zipfile.ZipFile(bundle) as archive:
-                  if len(archive.infolist()) != 253:
-                      raise SystemExit('Source archive file count mismatch.')
-                  for entry in archive.infolist():
-                      name = PurePosixPath(entry.filename)
-                      if name.is_absolute() or '..' in name.parts or name.parts[0] in {'.git', '.openai'}:
-                          raise SystemExit('Unexpected path in source package.')
-                      if name.parts[0] == '.github':
-                          if name.as_posix() != '.github/workflows/github-pages.yml':
-                              raise SystemExit('Unexpected workflow in source package.')
-                          continue
-                      if entry.is_dir() or stat.S_ISLNK(entry.external_attr >> 16):
-                          raise SystemExit('Unexpected file type in source package.')
-                      target = Path(*name.parts)
-                      target.parent.mkdir(parents=True, exist_ok=True)
-                      with archive.open(entry) as src, target.open('wb') as dst:
-                          shutil.copyfileobj(src, dst)
-                      if (entry.external_attr >> 16) & 0o111:
-                          target.chmod(0o755)
-                      filenames.append(str(target))
-              if len(filenames) != 252:
-                  raise SystemExit('Source file count mismatch.')
-              temporary_parts = list(Path('.').glob('sp-portfolio-source.part-*'))
-              for part in temporary_parts:
-                  part.unlink()
-              subprocess.run(['git', 'add', '-f', '--', *filenames], check=True)
-              if temporary_parts:
-                  subprocess.run(['git', 'add', '-u', '--', *map(str, temporary_parts)], check=True)
-              subprocess.run(['git', '-c', 'user.name=github-actions[bot]', '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com', 'commit', '-m', 'Import complete SP Sequence Visuals portfolio source and media'], check=True)
-              subprocess.run(['git', 'push', 'origin', 'HEAD:main'], check=True)
-          PY
+          owner="${REPOSITORY%%/*}"
+          repo="${REPOSITORY#*/}"
+          base="/$repo/"
+          if [ "${repo,,}" = "${owner,,}.github.io" ]; then base="/"; fi
+          node scripts/export-github-pages.mjs --origin "https://$owner.github.io" --base "$base" --out out
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: out
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v4
