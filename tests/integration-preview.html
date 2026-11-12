@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local API verification</title><link rel="stylesheet" href="/inbox.css"></head><body><main class="inbox-main"><h1>Local API verification</h1><p>Disposable synthetic preview data. Never published.</p><button class="button" id="run">Run integration checks</button><pre id="results" style="white-space:pre-wrap;line-height:1.8"></pre><script>
+document.getElementById('run').addEventListener('click',async()=>{
+ const uuid=()=> '10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(Number(c)^crypto.getRandomValues(new Uint8Array(1))[0]&15>>Number(c)/4).toString(16));
+ const output=document.getElementById('results');output.textContent='';const lines=[];
+ const verify=(condition,message)=>{if(!condition)throw new Error(message);lines.push('PASS '+message);output.textContent=lines.join('\n');};
+ const owner={'oai-authenticated-user-id':'local-qa-owner','oai-authenticated-user-email':'digitaldreamshub2020@gmail.com'};
+ const other={'oai-authenticated-user-id':'local-qa-client','oai-authenticated-user-email':'qa@example.invalid'};
+ const call=async(path,method='GET',data,identity={})=>{const r=await fetch(path,{method,cache:'no-store',headers:{...(data?{'Content-Type':'application/json'}:{}),...identity},...(data?{body:JSON.stringify(data)}:{})});const body=await r.json();return {status:r.status,body,cache:r.headers.get('cache-control')};};
+ try{
+  verify(location.hostname==='terminal.local','Test runs only on the local preview');
+  let r=await call('/api/studio/requests');verify(r.status===401,'Anonymous visitors cannot read client requests');verify(r.cache==='no-store','Private API responses are never cached');
+  r=await call('/api/studio/requests','GET',null,other);verify(r.status===403,'A signed-in non-owner cannot read client requests');
+  const data={idempotencyKey:uuid(),intent:'order',name:'Local API QA',email:'api-qa@example.invalid',service:'Motion graphics',details:'Synthetic local integration test. Not a customer enquiry.'};
+  r=await call('/api/requests','POST',{...data,service:'Invalid service'});verify(r.status===400,'Server rejects unsupported services');
+  r=await call('/api/requests','POST',data);verify(r.status===201&&r.body.received&&r.body.reference,'Service request is saved and returns a reference');const reference=r.body.reference;
+  r=await call('/api/requests','POST',data);verify(r.status===200&&r.body.reference===reference,'Retry uses the same saved reference');
+  r=await call('/api/requests','POST',{...data,details:'Changed brief'});verify(r.status===409,'Reusing a reference for changed details is rejected');
+  r=await call('/api/studio/requests','GET',null,owner);verify(r.status===200,'The owner can read the inbox');let item=r.body.items.find(item=>item.id===data.idempotencyKey);verify(item&&r.body.items.filter(item=>item.id===data.idempotencyKey).length===1,'Repeated submission created exactly one record');verify(item.details===data.details&&item.email===data.email,'Saved contact and brief match the submitted request');
+  r=await call('/api/studio/requests/'+data.idempotencyKey,'PATCH',{status:'confirmed'},other);verify(r.status===403,'Non-owners cannot change request status');
+  r=await call('/api/studio/requests/'+data.idempotencyKey,'PATCH',{status:'paid'},owner);verify(r.status===400,'Owner updates reject unsupported statuses');
+  r=await call('/api/studio/requests/'+data.idempotencyKey,'PATCH',{status:'confirmed'},owner);verify(r.status===200&&r.body.saved,'Owner can confirm a request');
+  r=await call('/api/studio/requests','GET',null,owner);item=r.body.items.find(item=>item.id===data.idempotencyKey);verify(item?.status==='confirmed','Status update survives a fresh database read');
+  const missingDate={...data,idempotencyKey:uuid(),intent:'session'};r=await call('/api/requests','POST',missingDate);verify(r.status===400,'Session requests require a preferred date');
+  const session={...missingDate,preferredDate:'2026-11-14',preferredTime:'14:30',service:'Photography'};r=await call('/api/requests','POST',session);verify(r.status===201&&r.body.received,'Session with a valid date and WAT time is saved');
+  r=await call('/api/studio/requests','GET',null,owner);item=r.body.items.find(item=>item.id===session.idempotencyKey);verify(item?.intent==='session'&&item.preferred_date==='2026-11-14'&&item.preferred_time==='14:30','Owner receives the chosen session date and time');
+  const page=await fetch('/studio-inbox',{headers:owner});verify(page.status===200&&(await page.text()).includes('The studio <em>inbox.'),'Owner dashboard route serves successfully');
+  const guestPage=await fetch('/studio-inbox');verify((await guestPage.text()).includes('Sign in with ChatGPT'),'Anonymous dashboard route shows a sign-in screen');
+  lines.push('\nALL '+lines.length+' CHECKS PASSED');output.textContent=lines.join('\n');
+ }catch(error){output.textContent=lines.join('\n')+'\nFAIL '+error.message;}
+});</script></main></body></html>

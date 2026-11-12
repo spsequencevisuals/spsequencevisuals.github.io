@@ -1,0 +1,19 @@
+{
+  "name": "SPSequence Visuals",
+  "short_name": "SP Visuals",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0d0f",
+  "theme_color": "#0c0d0f",
+  "description": "Video, photography, graphic design and motion. Creative designs that speak.",
+  "categories": ["photography", "design", "portfolio"],
+  "icons": [
+    {"src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/assets/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [{"name": "Selected work", "url": "/#work"}, {"name": "Start a project", "url": "/#contact"}]
+}

@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Local studio verification</title><link rel="stylesheet" href="/studio.css"></head><body><main class="studio-shell"><p class="eyebrow">LOCAL PREVIEW ONLY</p><h1>Studio integration checks.</h1><p>Synthetic local data. No social account will be posted to. Remove the public test copy before publication.</p><button class="button light" id="run">Run studio checks</button><pre id="results" style="white-space:pre-wrap;line-height:1.8"></pre></main><script>
+document.getElementById('run').addEventListener('click',async()=>{
+ const output=document.getElementById('results');output.textContent='';const lines=[];const owner={'oai-authenticated-user-id':'local-studio-qa-owner','oai-authenticated-user-email':'digitaldreamshub2020@gmail.com'},other={'oai-authenticated-user-id':'local-studio-qa-other','oai-authenticated-user-email':'client@example.invalid'};
+ const uuid=()=> '10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(Number(c)^crypto.getRandomValues(new Uint8Array(1))[0]&15>>Number(c)/4).toString(16));
+ const check=(condition,message)=>{if(!condition)throw new Error(message);lines.push('PASS '+message);output.textContent=lines.join('\n');};
+ const call=async(path,method='GET',data,identity=owner)=>{const response=await fetch(path,{method,cache:'no-store',headers:{...identity,...(data?{'Content-Type':'application/json'}:{})},...(data?{body:JSON.stringify(data)}:{})});return {status:response.status,body:await response.json()};};
+ let originalProfiles=null,project=null;
+ try{
+  check(location.hostname==='terminal.local','Runs only against the local preview');
+  for(const route of ['projects','media','profiles','drafts','publishing']){const result=await call('/api/studio/'+route,'GET',null,{});check(result.status===401,'Anonymous access to '+route+' is denied');}
+  let result=await call('/api/studio/projects','GET',null,other);check(result.status===403,'Another signed-in user cannot edit the portfolio');
+  result=await call('/api/studio/projects');check(result.status===200&&result.body.projects.length>=3,'Existing projects are retained in the owner library');
+  let response=await fetch('/view/creators-programme');let html=await response.text();check(response.status===200&&html.includes('LinkSkool Creators Programme'),'Existing videos have a standalone review page');check(!html.includes('mailto:')&&!html.includes('wa.me')&&!html.includes('href="/"'),'Review pages omit direct contact links and the homepage link');
+  originalProfiles=(await call('/api/studio/profiles')).body.profiles;
+  const profiles={facebook:'https://www.facebook.com/local-qa-studio',instagram:'https://www.instagram.com/local-qa-studio',tiktok:'https://www.tiktok.com/@local-qa-studio',linkedin:'https://www.linkedin.com/in/local-qa-studio',behance:'https://www.behance.net/local-qa-studio',x:'https://x.com/local-qa-studio',whatsapp:'+2348000000001'};
+  result=await call('/api/studio/profiles','PUT',profiles);check(result.status===200&&result.body.saved,'All profile links and WhatsApp number save');
+  html=await (await fetch('/',{cache:'no-store'})).text();check(html.includes('facebook.com/local-qa-studio')&&html.includes('https://wa.me/2348000000001'),'Saved links and WhatsApp button appear in the portfolio');
+  result=await call('/api/studio/profiles','PUT',{instagram:'https://instagram.com.evil.example/profile'});check(result.status===400,'Profile settings reject lookalike domains');
+  const blob=await (await fetch('/assets/creators-poster.webp')).blob();response=await fetch('/api/studio/media',{method:'POST',headers:{...owner,'Content-Type':'image/webp','X-File-Name':'local-qa-cover.webp'},body:blob});result={status:response.status,body:await response.json()};check(result.status===201&&result.body.asset?.id,'A real image uploads to object storage');const asset=result.body.asset;
+  response=await fetch(asset.url,{cache:'no-store'});check(response.status===401,'Unpublished uploaded media stays private');
+  response=await fetch('/api/studio/media',{method:'POST',headers:{...owner,'Content-Type':'image/png','X-File-Name':'bad.png'},body:new Blob(['not an image'],{type:'image/png'})});check(response.status===400,'Files with mismatched signatures are rejected');
+  project={id:'qa-'+uuid(),title:'Local studio QA project',categories:['design'],status:'draft',description:'Synthetic preview check <img src=x onerror=alert(1)>',role:'Local verification only',tags:['QA'],mediaId:asset.id,posterId:'',format:'Design image',duration:'IMAGE',sortOrder:99,isNew:true};
+  result=await call('/api/studio/projects','POST',project);check(result.status===201&&result.body.project.id===project.id,'A private project is saved with its uploaded media');
+  response=await fetch('/view/'+project.id,{cache:'no-store'});check(response.status===404,'Private project review pages are hidden from anonymous visitors');
+  response=await fetch('/view/'+project.id,{headers:owner,cache:'no-store'});check(response.status===200,'The owner can preview a private project');
+  project={...project,status:'published',isNew:false};result=await call('/api/studio/projects','POST',project);check(result.status===201,'A project can be added to the portfolio');
+  html=await (await fetch('/',{cache:'no-store'})).text();check(html.includes('Local studio QA project')&&!html.includes('__PROJECT_DATA__'),'Public portfolio content updates without changing source code');
+  html=await (await fetch('/view/'+project.id,{cache:'no-store'})).text();check(html.includes('&lt;img src=x onerror=alert(1)&gt;'),'Project descriptions render as text, not executable HTML');
+  response=await fetch(asset.url,{headers:{Range:'bytes=0-9'},cache:'no-store'});check(response.status===206&&(await response.arrayBuffer()).byteLength===10,'Uploaded media supports byte ranges for playback');
+  response=await fetch(asset.url,{method:'HEAD',cache:'no-store'});check(response.status===200&&response.headers.get('content-type')==='image/webp','Media HEAD responses preserve file type');
+  project={...project,title:'Local studio QA renamed'};result=await call('/api/studio/projects','POST',project);check(result.status===201&&result.body.project.id===project.id,'Editing a title preserves the existing project link');
+  project={...project,status:'archived'};await call('/api/studio/projects','POST',project);response=await fetch('/view/'+project.id,{cache:'no-store'});check(response.status===404,'Archiving a project removes its review page');
+  response=await fetch(asset.url,{cache:'no-store'});check(response.status===401,'Media becomes private when no published project uses it');
+  const draft={id:uuid(),title:'Local social QA draft',caption:'A private test release.',projectId:'creators-programme',services:['facebook','instagram','linkedin','twitter','tiktok'],channelIds:[],isAiGenerated:false};
+  result=await call('/api/studio/drafts','POST',draft);check(result.status===201&&result.body.draft.state==='draft','Social captions and selected destinations save privately');
+  result=await call('/api/studio/drafts');check(result.body.drafts.some(item=>item.id===draft.id),'A social draft survives a fresh database read');
+  result=await call('/api/studio/publish','POST',{id:draft.id,confirmed:false});check(result.status===400,'Publishing requires explicit final review');
+  const state=(await call('/api/studio/publishing')).body;if(!state.configured){result=await call('/api/studio/publish','POST',{id:draft.id,confirmed:true});check(result.status===409,'Publishing is blocked while the account connection is missing');result=await call('/api/studio/drafts');check(result.body.drafts.find(item=>item.id===draft.id).state==='draft','A blocked publishing attempt does not consume the draft');}
+  response=await fetch('/studio',{cache:'no-store'});check((await response.text()).includes('Sign in with ChatGPT'),'The owner studio requires sign-in');
+  lines.push('\nALL '+lines.length+' CHECKS PASSED');output.textContent=lines.join('\n');
+ }catch(error){output.textContent=lines.join('\n')+'\nFAIL '+error.message;}finally{if(originalProfiles)await call('/api/studio/profiles','PUT',originalProfiles);if(project)await call('/api/studio/projects','POST',{...project,status:'archived',isNew:false});}
+});</script></body></html>
