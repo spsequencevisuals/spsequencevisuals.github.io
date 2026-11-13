@@ -30,3 +30,7 @@ are included. The old company hosting identity is intentionally excluded.
 
 Media here are website exports. Original-quality uploads and editable video/design
 projects are not included. Keep the personal Google Drive backup as well.
+
+## Independent personal owner studio
+
+The GitHub portfolio now includes an owner-entry route and live portfolio/profile support. `hosting/owner-service` contains a separate Cloudflare Worker with GitHub owner sign-in, private chunked uploads up to 500 MB and the existing protected social composer. It requires deployment in the owner’s personal Cloudflare account and a Buffer connection before it is active. See `hosting/OWNER-STUDIO-SETUP.md` for the exact setup and verification steps. This does not transfer or depend on the old company-owned Site.
