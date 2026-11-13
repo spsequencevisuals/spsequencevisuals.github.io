@@ -20,7 +20,7 @@ test('static base paths reject traversals and support both user and project repo
 test('portable subpath export preserves full media, project links, theme and enquiries without depending on the company host',()=>{
  const output=mkdtempSync(join(tmpdir(),'sp-pages-test-'));
  try{
-  const result=exportPages({output,origin:'https://owner.github.io',base:'/portfolio/'});assert.equal(result.projectCount,22);
+  const result=exportPages({output,origin:'https://owner.github.io',base:'/portfolio/'});assert.equal(result.projectCount,defaultProjects.length);
   const home=readFileSync(join(output,'index.html'),'utf8');assert.doesNotMatch(home,/__[A-Z_]+__|digitaldreamshub2020\.chatgpt\.site|href="\/studio/);assert.match(home,/src="\/portfolio\/app\.js"/);assert.match(home,/"media":"\/portfolio\/assets\/media-files\/computer-basics-educational-lesson\.mp4"/);
   const page=readFileSync(join(output,'work/black-friday/index.html'),'utf8');assert.match(page,/https:\/\/owner.github.io\/portfolio\/work\/black-friday/);assert.match(page,/https:\/\/owner.github.io\/portfolio\/assets\/black-friday-landscape-poster.webp/);assert.equal((page.match(/<video /g)||[]).length,3);
   assert.ok(existsSync(join(output,'assets/media-files/computer-basics-educational-lesson.mp4')));assert.ok(existsSync(join(output,'view/black-friday/index.html')));
