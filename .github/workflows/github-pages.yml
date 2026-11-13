@@ -25,6 +25,8 @@ jobs:
           node-version: '24'
           package-manager-cache: false
       - uses: actions/configure-pages@v5
+      - name: Check private owner studio
+        run: npm test --prefix hosting/owner-service
       - name: Build portable portfolio
         env:
           REPOSITORY: ${{ github.repository }}
