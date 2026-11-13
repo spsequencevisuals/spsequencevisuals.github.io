@@ -1,0 +1,14 @@
+{
+  "name": "sp-sequence-owner-studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:assets": "node prepare.mjs",
+    "dev": "node preview.mjs",
+    "test": "node prepare.mjs && node --test tests/*.test.mjs",
+    "deploy": "node prepare.mjs && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.92.0"
+  }
+}
