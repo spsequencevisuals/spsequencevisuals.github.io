@@ -1,7 +1,7 @@
 'use strict';
 let portfolioVideos=[],videoLoadObserver;
 function pauseGridVideos(){window.SPVideoPlayback.pauseAll();}
-function stopGridVideos(){videoLoadObserver?.disconnect();portfolioVideos.forEach(video=>{window.SPVideoPlayback.unregister(video);video.removeAttribute('src');video.load();});portfolioVideos=[];}
+function stopGridVideos(){window.SPYouTube?.destroyWithin(grid);videoLoadObserver?.disconnect();portfolioVideos.forEach(video=>{window.SPVideoPlayback.unregister(video);video.removeAttribute('src');video.load();});portfolioVideos=[];}
 function loadPortfolioVideo(video){if(!video.getAttribute('src')){video.src=video.dataset.src;video.load();}}
 function resumeGridVideos(){window.SPVideoPlayback.refresh();}
 function speakerIcon(on){return `<svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 4 6 8H3v8h3l5 4V4Z"/>${on?'<path d="M15 8c2 2 2 6 0 8m3-11c4 4 4 10 0 14"/>':'<path d="m16 9 5 6m0-6-5 6"/>'}</svg>`;}
@@ -21,6 +21,12 @@ function prepareGridVideos(){
   if(project.type==='image'){
    if(project.categories.includes('photo'))card.classList.add('photo-card');
    const imageButton=document.createElement('button');imageButton.type='button';imageButton.className='image-project';imageButton.dataset.project=project.id;imageButton.setAttribute('aria-label','View '+project.title);imageButton.append(picture.querySelector('img'));imageButton.append(picture.querySelector('.play-circle'));picture.prepend(imageButton);return;
+  }
+  if(window.SPYouTube?.videoId(project.media)){
+   card.classList.add('video-card','youtube-card');picture.replaceChildren();
+   const host=document.createElement('div');picture.append(host);
+   window.SPYouTube.mount(host,{url:project.media,title:project.title,hoverTarget:card,muted:true,loop:true,previewSeconds:preview?.seconds||0});
+   const order=document.createElement('button');order.type='button';order.className='project-order';order.dataset.contact='';order.dataset.service='Video editing';order.textContent='Request a similar edit ↗';card.querySelector('.project-meta').append(order);return;
   }
   card.classList.add('video-card');picture.querySelector('img').remove();picture.querySelector('.play-circle').remove();picture.querySelector('.duration').remove();
   const video=document.createElement('video');video.className='portfolio-video';video.dataset.src=preview?.media||project.media;video.dataset.previewSeconds=String(preview?.seconds||0);video.poster=project.poster;video.muted=true;video.defaultMuted=true;video.playsInline=true;video.loop=true;video.preload='none';video.tabIndex=-1;video.setAttribute('aria-label',project.title+(preview?' · 60-second preview':''));picture.prepend(video);

@@ -111,7 +111,7 @@ window.SPVideoPlayback=(()=>{
  window.addEventListener('resize',schedule,{passive:true});
  hoverMedia?.addEventListener?.('change',schedule);
  document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseAll();else returnToPage();});
- window.addEventListener('blur',()=>{focused=false;pauseAll();});
+ window.addEventListener('blur',()=>{if(document.activeElement?.tagName==='IFRAME'&&document.hasFocus?.())return;focused=false;pauseAll();});
  window.addEventListener('focus',()=>{focused=true;returnToPage();});
  window.addEventListener('pagehide',()=>{suspended=true;pauseAll();});
  window.addEventListener('pageshow',()=>{suspended=false;focused=true;returnToPage();});

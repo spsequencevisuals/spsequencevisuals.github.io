@@ -1,6 +1,6 @@
 # SP Sequence Visuals — personal owner studio
 
-Implementation status: code and local checks are ready. The personal backend must be deployed and connected before uploads or social publishing work on the live GitHub site.
+Implementation status: direct uploads and YouTube link support are implemented and locally checked. The personal backend must be deployed and connected before uploads or social publishing work on the live GitHub site.
 
 The public portfolio stays at https://spsequencevisuals.github.io/. Its owner link opens an independently hosted studio. GitHub Pages serves the portfolio; your own Cloudflare Worker handles sign-in, private uploads, portfolio records and Buffer publishing. No ChatGPT account is required to manage the studio.
 
@@ -50,6 +50,12 @@ Commit the resulting hosting/studio-config.json with the implementation. The exi
 Verify sign-in with your GitHub account, rejection of another account, a private upload, a new draft, publication on the portfolio, archived project removal, direct full-video playback, review links and profile updates.
 
 The portfolio enquiry form keeps its existing Web3Forms delivery to spsequencevisuals@gmail.com. The owner studio links to Gmail; it does not claim to contain or import those email enquiries.
+
+## YouTube videos
+
+The project editor supports both uploaded files and YouTube links. Choose the source when creating or editing a project. YouTube videos must be public or unlisted with embedding enabled. Standard video, youtu.be, Shorts and live-video links are normalized to one video. An optional uploaded cover replaces the YouTube thumbnail. YouTube players participate in the same single-video playback control as uploaded videos, including hover/scroll, project dialogs and review pages. Long gallery films use the same 60-second preview limit when a duration over 15 minutes is supplied. Draft project records stay private, but an unlisted YouTube video remains accessible to anyone who has its YouTube link.
+
+YouTube links cannot be sent to Buffer as original video files. Use the original uploaded video when preparing a social release.
 
 ## 4. Social publishing
 

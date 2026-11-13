@@ -128,3 +128,10 @@ test('the gallery preview loops at 60 seconds while project playback stays unlim
  full.currentTime=300;full.emit('timeupdate');assert.equal(full.currentTime,300);
  api.unregister(preview);preview.currentTime=65;preview.emit('timeupdate');assert.equal(preview.currentTime,65);
 });
+
+
+test('focusing an embedded player keeps playback active while leaving the browser still pauses it',()=>{
+ const {api,video,flush,document,window}=setup(),player=video('embedded');api.register(player);flush();assert.equal(player.paused,false);
+ document.activeElement={tagName:'IFRAME'};document.hasFocus=()=>true;window.emit('blur');assert.equal(player.paused,false);
+ document.hasFocus=()=>false;window.emit('blur');assert.equal(player.paused,true);
+});
