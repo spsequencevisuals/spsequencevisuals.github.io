@@ -25,7 +25,7 @@ jobs:
           assert hashlib.sha256(raw).hexdigest()==os.environ['UPDATE_PATCH_SHA256']
           path=pathlib.Path('/tmp/sp-owner-studio.patch');path.write_bytes(raw)
           subprocess.run(['git','apply','--check',str(path)],check=True)
-          subprocess.run(['git','apply','--index',str(path)],check=True)
+          subprocess.run(['git','apply','--index','--exclude=.github/workflows/github-pages.yml',str(path)],check=True)
           PYCODE
       - name: Verify owner access, uploads and linked-video playback
         run: |
