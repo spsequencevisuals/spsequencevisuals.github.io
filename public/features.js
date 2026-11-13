@@ -17,8 +17,9 @@ function prepareGridVideos(){
   const card=document.createElement('article');card.className=old.className;card.innerHTML=old.innerHTML;old.replaceWith(card);
   const picture=card.querySelector('.project-picture'),title=card.querySelector('h3');
   title.innerHTML=`<button type="button" data-project="${project.id}">${safe(project.title)}<span aria-hidden="true">↗</span></button>`;
-  const share=document.createElement('div');share.className='card-share-actions';share.innerHTML=`<a href="/work/${project.id}">${preview?'Watch full film · '+safe(project.duration):'Project details'} ↗</a><button type="button" data-copy-project="${project.id}">Copy review link ⧉</button>${project.behindScenes?`<a href="/work/${project.id}#timeline">Timeline reveal ↗</a>`:''}`;card.querySelector('.project-meta').append(share);
+  const share=document.createElement('div');share.className='card-share-actions';share.innerHTML=`<a href="${window.SPStudioConfig?.apiBase||''}/work/${project.id}">${preview?'Watch full film · '+safe(project.duration):'Project details'} ↗</a><button type="button" data-copy-project="${project.id}">Copy review link ⧉</button>${project.behindScenes?`<a href="${window.SPStudioConfig?.apiBase||''}/work/${project.id}#timeline">Timeline reveal ↗</a>`:''}`;card.querySelector('.project-meta').append(share);
   if(project.type==='image'){
+   if(project.categories.includes('photo'))card.classList.add('photo-card');
    const imageButton=document.createElement('button');imageButton.type='button';imageButton.className='image-project';imageButton.dataset.project=project.id;imageButton.setAttribute('aria-label','View '+project.title);imageButton.append(picture.querySelector('img'));imageButton.append(picture.querySelector('.play-circle'));picture.prepend(imageButton);return;
   }
   card.classList.add('video-card');picture.querySelector('img').remove();picture.querySelector('.play-circle').remove();picture.querySelector('.duration').remove();
@@ -110,4 +111,4 @@ function initializeBooking(){
  try{const receipt=JSON.parse(sessionStorage.getItem(receiptKey));if(receipt&&/^SP-[A-F0-9]{12}$/.test(receipt.reference)&&['order','session'].includes(receipt.intent)&&Date.now()-receipt.receivedAt>=0&&Date.now()-receipt.receivedAt<86400000)showReceipt(receipt);}catch{}
 }
 
-document.addEventListener('click',event=>{const button=event.target.closest('[data-copy-project]');if(button)copyText(location.origin+'/view/'+button.dataset.copyProject,'Project review link copied.');});
+document.addEventListener('click',event=>{const button=event.target.closest('[data-copy-project]');if(button)copyText((window.SPStudioConfig?.apiBase||location.origin)+'/view/'+button.dataset.copyProject,'Project review link copied.');});
