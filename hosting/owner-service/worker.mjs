@@ -38,7 +38,7 @@ export async function handle(request,env){
    }
    else if(/^\/media\/[a-f0-9-]+$/.test(path)&&['GET','HEAD'].includes(request.method))response=await mediaFile[request.method](request,{params:Promise.resolve({id:path.split('/')[2]})});
    else if(/^\/(work|view)\/[a-z0-9-]+$/.test(path)&&request.method==='GET'){
-    const project=await findProject(path.split('/')[2]);response=project&&(project.status==='published'||owner)?new Response(projectPage(project,url.origin,path.startsWith('/view/')),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}}):new Response('Project not available.',{status:404});
+    const project=await findProject(path.split('/')[2]);response=project&&(project.status==='published'||owner)?new Response(projectPage(project,url.origin,path.startsWith('/view/')).replaceAll('href="/"','href="'+origin(env)+'/"').replaceAll('href="/#contact"','href="'+origin(env)+'/#contact"').replaceAll('href="/#work"','href="'+origin(env)+'/#work"'),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}}):new Response('Project not available.',{status:404});
    }else response=await env.ASSETS.fetch(request);
   }catch(error){response=json({error:error?.status?error.message:'The studio could not complete this request. Refresh and try again.'},error?.status||503);}
   const headers=new Headers(response.headers);headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','strict-origin-when-cross-origin');headers.set('Permissions-Policy','camera=(), microphone=(), geolocation=(), payment=()');
