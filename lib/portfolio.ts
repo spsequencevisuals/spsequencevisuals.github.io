@@ -8,7 +8,8 @@ export type Asset = {id:string;storage_key:string;filename:string;mime:string;by
 export type BehindScenes = {title:string;media:string;poster:string;duration:string;format:string;description:string};
 export type ProjectVariant = BehindScenes & {id:string;label:string};
 export type ProjectPreview = {media:string;sourceMedia:string;seconds:number};
-export type Project = ReturnType<typeof validateProject> & {media:string;poster:string;type:'video'|'image';updatedAt?:number;behindScenes?:BehindScenes;variants?:ProjectVariant[];preview?:ProjectPreview};
+export type ProjectPhoto = {id:string;media:string;alt:string;caption:string;width:number;height:number};
+export type Project = ReturnType<typeof validateProject> & {media:string;poster:string;type:'video'|'image';updatedAt?:number;behindScenes?:BehindScenes;variants?:ProjectVariant[];preview?:ProjectPreview;gallery?:ProjectPhoto[]};
 type ProjectRow={id:string;status:string;sort_order:number;data_json:string;updated_at:number};
 
 export function fallbackProjects(): Project[] {
@@ -17,7 +18,7 @@ export function fallbackProjects(): Project[] {
 export async function projectsForOwner(): Promise<Project[]> {
  const rows=await database().prepare('SELECT id,status,sort_order,data_json,updated_at FROM portfolio_projects ORDER BY sort_order, created_at DESC LIMIT 500').all<ProjectRow>();
  const map=new Map(fallbackProjects().map(project=>[project.id,project]));
- for(const row of rows.results){const data=JSON.parse(row.data_json),bundled=map.get(row.id),behindScenes=bundled?.behindScenes,variants=bundled?.variants,preview=bundled?.preview&&data.media===bundled.preview.sourceMedia?bundled.preview:undefined;map.set(row.id,{...data,id:row.id,status:row.status,sortOrder:row.sort_order,updatedAt:row.updated_at,...(behindScenes?{behindScenes}:{}),...(variants?{variants}:{}),preview});}
+ for(const row of rows.results){const data=JSON.parse(row.data_json),bundled=map.get(row.id),behindScenes=bundled?.behindScenes,variants=bundled?.variants,gallery=bundled?.gallery&&data.media===bundled.media?bundled.gallery:undefined,preview=bundled?.preview&&data.media===bundled.preview.sourceMedia?bundled.preview:undefined;map.set(row.id,{...data,id:row.id,status:row.status,sortOrder:row.sort_order,updatedAt:row.updated_at,...(behindScenes?{behindScenes}:{}),...(variants?{variants}:{}),...(gallery?{gallery}:{}),preview});}
  return [...map.values()].sort((a,b)=>a.sortOrder-b.sortOrder||a.title.localeCompare(b.title));
 }
 export async function publishedProjects(){return (await projectsForOwner()).filter(project=>project.status==='published');}
@@ -28,7 +29,7 @@ export async function saveProject(raw:unknown,actor:ChatGPTUser){
  const input=raw as Record<string,unknown>;const data=validateProject(input);
  const previous=await findProject(data.id);
  if(input.isNew&&previous)throw new RequestError('That project link already exists. Choose another link.');
- const original=defaultProjects.find(project=>project.id===data.id);
+ const original=defaultProjects.find(project=>project.id===data.id) as Project|undefined;
  const media=data.mediaId?await assetById(data.mediaId):null;
  const poster=data.posterId?await assetById(data.posterId):null;
  // One Site, one shared studio: approved accounts manage the same media library.
@@ -41,8 +42,9 @@ export async function saveProject(raw:unknown,actor:ChatGPTUser){
  const posterUrl=poster?'/media/'+poster.id:type==='image'?mediaUrl:original?.poster||'/assets/hero.webp';
  const behindScenes=original?.behindScenes;
  const variants=original?.variants;
+ const gallery=original?.gallery&&mediaUrl===original.media?original.gallery:undefined;
  const preview=original?.preview?.sourceMedia===mediaUrl?original.preview:undefined;
- const project:Project={...data,type,media:mediaUrl,poster:posterUrl,...(behindScenes?{behindScenes}:{}),...(variants?{variants}:{}),...(preview?{preview}:{})};const now=Date.now();
+ const project:Project={...data,type,media:mediaUrl,poster:posterUrl,...(behindScenes?{behindScenes}:{}),...(variants?{variants}:{}),...(gallery?{gallery}:{}),...(preview?{preview}:{})};const now=Date.now();
  await database().prepare('INSERT INTO portfolio_projects (id,title,status,sort_order,data_json,media_id,poster_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,status=excluded.status,sort_order=excluded.sort_order,data_json=excluded.data_json,media_id=excluded.media_id,poster_id=excluded.poster_id,updated_at=excluded.updated_at').bind(data.id,data.title,data.status,data.sortOrder,JSON.stringify(project),data.mediaId||null,data.posterId||null,now,now).run();
  return {...project,updatedAt:now};
 }
