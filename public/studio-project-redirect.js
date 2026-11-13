@@ -1,0 +1,1 @@
+'use strict';(()=>{const marker=document.getElementById('live-project'),base=window.SPStudioConfig?.apiBase;if(base&&marker&&/^[a-z0-9-]+$/.test(marker.dataset.id))location.replace(base+(marker.dataset.review==='true'?'/view/':'/work/')+marker.dataset.id+location.hash);})();

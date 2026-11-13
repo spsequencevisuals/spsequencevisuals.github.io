@@ -43,3 +43,8 @@ yarn-error.log*
 
 # OS metadata
 .DS_Store
+
+/hosting/owner-service/node_modules/
+/hosting/owner-service/static/
+/hosting/owner-service/generated/
+/hosting/owner-service/.wrangler/

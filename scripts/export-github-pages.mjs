@@ -1,4 +1,4 @@
-import {cpSync,mkdirSync,readFileSync,writeFileSync,openSync,writeSync,closeSync,readdirSync,statSync} from 'node:fs';
+import {cpSync,mkdirSync,readFileSync,writeFileSync,openSync,writeSync,closeSync,readdirSync,statSync,existsSync} from 'node:fs';
 import {resolve,join,relative,dirname} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
@@ -37,7 +37,7 @@ export function exportPages({output=join(root,'out'),origin='https://example.inv
   return value;
  };
  const projects=defaultProjects.map((p,index)=>({...rewrite(p),status:'published',sortOrder:index,mediaId:'',posterId:''}));
- const paths=/(\b(?:src|href|poster|content)=["'])\/(?!\/)|(["'`(])\/(?=assets\/|work\/|view\/|styles\.css|theme-light\.css|app\.js|features\.js|booking\.js|static-config\.js|request-email\.js|video-playback\.js|project-share\.js|share\.css|manifest\.webmanifest|sw\.js|#|["'`])/g;
+ const paths=/(\b(?:src|href|poster|content)=["'])\/(?!\/)|(["'`(])\/(?=assets\/|work\/|view\/|owner\/|studio-config\.js|studio-entry\.js|studio-live\.js|studio-project-redirect\.js|styles\.css|theme-light\.css|app\.js|features\.js|booking\.js|static-config\.js|request-email\.js|video-playback\.js|project-share\.js|share\.css|manifest\.webmanifest|sw\.js|#|["'`])/g;
  const localize=text=>{
   text=text.replace(paths,(_match,html,code)=>(html||code)+base);
   // A ready-to-upload root site works with any personal username. Until an
@@ -50,9 +50,12 @@ export function exportPages({output=join(root,'out'),origin='https://example.inv
  let home=readFileSync(join(root,'site/index.html'),'utf8').replace('__PROJECT_DATA__',()=>safeJson(projects)).replaceAll('__PROJECT_COUNT__',String(projects.length).padStart(2,'0')).replace('__SOCIAL_PROFILES__','').replace('__WHATSAPP_BUTTON__','');
  home=home.replaceAll('https://sp-sequence-visuals.digitaldreamshub2020.chatgpt.site',siteOrigin);
  home=home.replace(/<a href="\/studio(?:-inbox)?" target="_top">.*?<\/a>/g,'');
+ home=home.replace('<a href="#top">Back to top','<a href="/owner/">Owner studio</a><a href="#top">Back to top');
+ home=home.replace('<script src="/video-playback.js" defer></script>','<script src="/studio-config.js" defer></script><script src="/video-playback.js" defer></script>');
  home=home.replace('Your contact details and brief are saved privately and shared with SP by email to handle this request.','Your contact details and brief are sent to SP by email to handle this request.');
  home=home.replace('REQUEST RECEIVED','BRIEF SUBMITTED').replace('Safely received.<br><em>Thank you.</em>','Brief submitted.<br><em>Thank you.</em>');
  home=home.replace('<script src="/app.js" defer></script>','<script src="/static-config.js" defer></script><script src="/booking.js" defer></script><script src="/app.js" defer></script>');
+ home=home.replace('<script src="/app.js" defer></script>','<script src="/app.js" defer></script><script src="/studio-live.js" defer></script>');
  writeFileSync(join(output,'index.html'),localize(home));
  writeFileSync(join(output,'404.html'),localize('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page not found · SP Sequence Visuals</title><link rel="stylesheet" href="/share.css"><main class="work-main"><h1>This page has moved.</h1><p><a href="/">Explore SP Sequence Visuals →</a></p></main></html>'));
  const features=readFileSync(join(root,'public/features.js'),'utf8');const bookingStart=features.indexOf('function initializeBooking(){'),bookingEnd=features.indexOf("document.addEventListener('click',event=>{const button=event.target.closest('[data-copy-project]')",bookingStart);
@@ -60,10 +63,14 @@ export function exportPages({output=join(root,'out'),origin='https://example.inv
  writeFileSync(join(output,'features.js'),localize(features.slice(0,bookingStart)+features.slice(bookingEnd)));
  writeFileSync(join(output,'booking.js'),readFileSync(join(root,'hosting/github-pages/booking.js'),'utf8'));
  writeFileSync(join(output,'static-config.js'),'window.SPStaticConfig=Object.freeze('+JSON.stringify({formKey})+');\n');
+ const configFile=join(root,'hosting/studio-config.json'),config=existsSync(configFile)?JSON.parse(readFileSync(configFile,'utf8')):{apiBase:''};
+ if(config.apiBase){const backend=new URL(config.apiBase);if(backend.protocol!=='https:'||backend.pathname!=='/'||backend.search||backend.hash||backend.username||backend.password||backend.port)throw new Error('Use the HTTPS root URL of the owner service.');config.apiBase=backend.origin;}
+ writeFileSync(join(output,'studio-config.js'),'window.SPStudioConfig=Object.freeze('+safeJson({apiBase:config.apiBase||''})+');\n');
+ mkdirSync(join(output,'owner'),{recursive:true});writeFileSync(join(output,'owner/index.html'),localize('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="robots" content="noindex,nofollow"><title>Owner studio · SP Sequence Visuals</title><link rel="stylesheet" href="/share.css"><link rel="stylesheet" href="/theme-light.css" media="(prefers-color-scheme:light)"><script src="/studio-config.js" defer></script><script src="/studio-entry.js" defer></script></head><body class="project-page"><header class="work-header"><a class="work-brand" href="/"><img src="/assets/sp-sequence-logo.png" alt="SP Sequence Visuals"></a><span>OWNER ACCESS</span></header><main class="work-main"><p class="eyebrow">YOUR PRIVATE WORKSPACE</p><h1>Your work.<br><em>Your own space.</em></h1><p id="owner-status">Checking your studio connection…</p><div class="work-actions"><a id="owner-link" hidden>Continue to owner sign-in ↗</a><a href="/">← Public portfolio</a></div></main></body></html>'));
  for(const name of ['styles.css','theme-light.css','share.css','app.js','project-share.js','sw.js'])writeFileSync(join(output,name),localize(readFileSync(join(output,name),'utf8')));
  let sw=readFileSync(join(output,'sw.js'),'utf8');sw=sw.replace('sp-visuals-v18','sp-pages-v18-'+base.replaceAll('/','_'));sw=sw.replace("const SHELL=[","const SHELL=['"+base+"static-config.js','"+base+"booking.js',");writeFileSync(join(output,'sw.js'),sw);
  const manifest=JSON.parse(readFileSync(join(root,'public/manifest.webmanifest'),'utf8'));manifest.id=base;manifest.start_url=base;manifest.scope=base;manifest.icons.forEach(icon=>icon.src=base+icon.src.slice(1));manifest.shortcuts.forEach(shortcut=>shortcut.url=base+shortcut.url.slice(1));writeFileSync(join(output,'manifest.webmanifest'),JSON.stringify(manifest,null,2));
- for(const project of projects){for(const review of [false,true]){const dest=join(output,review?'view':'work',project.id,'index.html');mkdirSync(dirname(dest),{recursive:true});writeFileSync(dest,localize(projectPage(project,siteOrigin,review).replaceAll(origin+'/assets/',origin+base+'assets/')));}}
+ for(const project of projects){for(const review of [false,true]){const dest=join(output,review?'view':'work',project.id,'index.html');mkdirSync(dirname(dest),{recursive:true});const live='<script src="/studio-config.js" defer></script><script id="live-project" type="application/json" data-id="'+project.id+'" data-review="'+review+'">{}</script><script src="/studio-project-redirect.js" defer></script>';writeFileSync(dest,localize(projectPage(project,siteOrigin,review).replace('</head>',live+'</head>').replaceAll(origin+'/assets/',origin+base+'assets/')));}}
  writeFileSync(join(output,'.nojekyll'),'');
  writeFileSync(join(output,'robots.txt'),'User-agent: *\nAllow: '+base+'\nDisallow: '+base+'view/\n'+(url.hostname.endsWith('.invalid')?'':'Sitemap: '+siteOrigin+'/sitemap.xml\n'));
  if(!url.hostname.endsWith('.invalid'))writeFileSync(join(output,'sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>'+siteOrigin+'/</loc></url>'+projects.map(p=>'<url><loc>'+siteOrigin+'/work/'+p.id+'/</loc></url>').join('')+'</urlset>');

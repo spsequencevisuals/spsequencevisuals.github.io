@@ -1,0 +1,14 @@
+import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';import {seal} from '../auth.mjs';
+export function environment(){
+ const raw=new DatabaseSync(':memory:');raw.exec(readFileSync(new URL('../migrations/0001_owner.sql',import.meta.url),'utf8'));
+ const prepare=sql=>{const stmt=raw.prepare(sql);let values=[];const wrap={bind(...v){values=v;return wrap;},async first(){return stmt.get(...values)||null;},async all(){return {results:stmt.all(...values)};},async run(){if(stmt.columns().length)return {results:stmt.all(...values),meta:{changes:0}};return {results:[],meta:{changes:Number(stmt.run(...values).changes)}};}};return wrap;};
+ const DB={raw,prepare,async batch(list){const result=[];for(const item of list)result.push(await item.run());return result;}};
+ const files=new Map(),uploads=new Map();
+ const get=(key,range)=>{const bytes=files.get(key);if(!bytes)return null;const part=range?bytes.slice(range.offset,range.offset+range.length):bytes;return {size:bytes.length,httpEtag:'"test-etag"',body:new Blob([part]).stream(),async arrayBuffer(){return part.buffer.slice(part.byteOffset,part.byteOffset+part.byteLength);}};};
+ const resume=(key,id)=>({async uploadPart(number,bytes){uploads.get(id).parts.set(number,new Uint8Array(bytes));return {partNumber:number,etag:'part-'+number};},async complete(parts){const arrays=parts.map(p=>uploads.get(id).parts.get(p.partNumber)),data=new Uint8Array(arrays.reduce((n,a)=>n+a.length,0));let offset=0;for(const a of arrays){data.set(a,offset);offset+=a.length;}files.set(key,data);uploads.delete(id);return get(key);},async abort(){uploads.delete(id);}});
+ const BUCKET={files,uploads,async createMultipartUpload(key){const uploadId=crypto.randomUUID();uploads.set(uploadId,{key,parts:new Map()});return {uploadId,...resume(key,uploadId)};},resumeMultipartUpload:resume,async head(key){return get(key);},async get(key,options){return get(key,options?.range);},async delete(key){files.delete(key);}};
+ return {DB,BUCKET,ASSETS:{fetch:async()=>new Response('Authenticated studio assets')},PUBLIC_SITE_URL:'https://spsequencevisuals.github.io',OWNER_GITHUB_ID:'355808109',OWNER_GITHUB_LOGIN:'spsequencevisuals',GITHUB_CLIENT_ID:'test-client',GITHUB_CLIENT_SECRET:'test-client-secret',SESSION_SECRET:'test-only-session-key-that-is-long-enough-0000'};
+}
+export async function ownerCookie(env,extra={}){return '__Host-sp-studio='+await seal({kind:'session',id:env.OWNER_GITHUB_ID,login:env.OWNER_GITHUB_LOGIN,exp:Date.now()+60000,...extra},env.SESSION_SECRET);}
+export function req(path,{method='GET',cookie='',body,origin='https://studio.example.com',headers={}}={}){const h=new Headers(headers);if(cookie)h.set('Cookie',cookie);if(method!=='GET')h.set('Origin',origin);if(body!==undefined&&!(body instanceof Uint8Array)){h.set('Content-Type','application/json');body=JSON.stringify(body);}return new Request('https://studio.example.com'+path,{method,headers:h,body});}
+
