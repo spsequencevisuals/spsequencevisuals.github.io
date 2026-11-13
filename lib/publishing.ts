@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { youtubeVideoId } from './youtube.mjs';
 import { database,digest } from './enquiries';
 import { assetById,findProject } from './portfolio';
 import { RequestError } from './request-data.mjs';
@@ -34,10 +35,11 @@ export async function saveSocialDraft(raw:unknown){
 }
 export async function dispatchesForDraft(id:string){return (await database().prepare('SELECT * FROM social_dispatches WHERE draft_id=? ORDER BY created_at').bind(id).all<Dispatch>()).results;}
 async function mediaUrl(draft:Draft,request:Request){
- if(draft.externalUrl)return draft.externalUrl;
+ if(draft.externalUrl){if(youtubeVideoId(draft.externalUrl))throw new RequestError('A YouTube page cannot be sent as a video file. Choose the original uploaded video for social publishing.');return draft.externalUrl;}
  let path='';if(draft.mediaId){const asset=await assetById(draft.mediaId);if(!asset?.mime.startsWith('video/'))throw new RequestError('Choose a video file.');path='/media/'+asset.id;}
  else if(draft.projectId){const project=await findProject(draft.projectId);if(project?.type==='video')path=project.media;}
  if(!path)throw new RequestError('Choose a video or add a direct public video URL.');
+ if(youtubeVideoId(path))throw new RequestError('This project uses a YouTube link. Choose the original uploaded video for social publishing.');
  const url=new URL(path,request.url);if(url.protocol!=='https:')throw new RequestError('Social publishing needs a public HTTPS video URL.');
  let response;try{response=await fetch(url,{method:'HEAD',redirect:'manual',signal:AbortSignal.timeout(10000)});}catch{throw new RequestError('The publishing service needs a public video link. This file could not be reached without sign-in.');}
  if(!response.ok||!response.headers.get('content-type')?.startsWith('video/'))throw new RequestError('This video is not public without sign-in. Use a direct public video URL, or publish the portfolio project and launch your site publicly first.');

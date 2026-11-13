@@ -1,5 +1,5 @@
 {
-  "name": "sp-sequence-owner-studio",
+  "name": "spsequencevisuals-github-io",
   "main": "worker.mjs",
   "compatibility_date": "2026-11-12",
   "compatibility_flags": [
@@ -21,7 +21,7 @@
     {
       "binding": "DB",
       "database_name": "sp-sequence-studio",
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "database_id": "592dca9c-24f3-4c26-b532-b6ef669ad6da",
       "migrations_dir": "migrations"
     }
   ],

@@ -70,3 +70,5 @@ dialog{color:var(--text);background:#111216;border:1px solid #363943;padding:0;m
 .contact-main h2 em{color:#aebedc}.contact-orb{color:#e3eaf8;border-color:#7588ad}
 .contact-bottom{border-color:#3b465c}.contact-orb:hover{background:#28354b;color:#fff}
 .email-alternative{display:inline-block;margin-top:17px;padding:7px 0;border-bottom:1px solid #7f94bc;color:#bfd2fc;font-size:12px;line-height:1.7}.email-app-note{font-size:11px!important;line-height:1.7;color:#a5b1c8;margin-top:9px!important;max-width:480px}
+
+.youtube-player{width:100%;min-width:200px;background:#07080b}.youtube-frame{position:relative;width:100%;aspect-ratio:16/9;min-height:200px}.youtube-frame>div,.youtube-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}.youtube-fallback{margin:0;padding:12px;font-size:14px;line-height:1.5}.youtube-fallback[hidden]{display:none}.youtube-card .project-picture{aspect-ratio:auto}.youtube-card .project-picture::after{display:none}#viewer-media>.youtube-player{width:100%}

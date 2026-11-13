@@ -3,6 +3,7 @@ import { defaultProjects } from './portfolio-defaults.mjs';
 import { escapeHtml, SOCIAL_LABELS, validateProject, validateProfiles } from './studio-data.mjs';
 import { RequestError, isOwner } from './request-data.mjs';
 import type { ChatGPTUser } from '../app/chatgpt-auth';
+import { youtubeVideoId, youtubeWatchUrl, youtubePoster } from './youtube.mjs';
 
 export type Asset = {id:string;storage_key:string;filename:string;mime:string;bytes:number;owner_id:string;created_at:number};
 export type BehindScenes = {title:string;media:string;poster:string;duration:string;format:string;description:string};
@@ -28,18 +29,22 @@ export async function saveProject(raw:unknown,actor:ChatGPTUser){
  if(!isOwner(actor))throw new RequestError('Sign in with an approved studio account.',403);
  const input=raw as Record<string,unknown>;const data=validateProject(input);
  const previous=await findProject(data.id);
+ if(data.videoSource!=='youtube'&&!data.mediaId&&previous?.mediaId)data.mediaId=previous.mediaId;
+ if(!data.posterId&&previous?.posterId)data.posterId=previous.posterId;
  if(input.isNew&&previous)throw new RequestError('That project link already exists. Choose another link.');
- const original=defaultProjects.find(project=>project.id===data.id) as Project|undefined;
+ const original=(defaultProjects.find(project=>project.id===data.id)||previous) as Project|undefined;
  const media=data.mediaId?await assetById(data.mediaId):null;
  const poster=data.posterId?await assetById(data.posterId):null;
  // One Site, one shared studio: approved accounts manage the same media library.
  // owner_id keeps the attribution of the original uploader.
  if(data.mediaId&&!media)throw new RequestError('Select an uploaded media file from the studio library.');
  if(data.posterId&&(!poster||!poster.mime.startsWith('image/')))throw new RequestError('Choose an image from the studio library for the cover.');
- if(!media&&!original)throw new RequestError('Upload or select a main image or video.');
- const type=media?(media.mime.startsWith('video/')?'video':'image'):(original!.type as 'video'|'image');
- const mediaUrl=media?'/media/'+media.id:original!.media;
- const posterUrl=poster?'/media/'+poster.id:type==='image'?mediaUrl:original?.poster||'/assets/hero.webp';
+ const youtubeId=data.videoSource==='youtube'?youtubeVideoId(data.youtubeUrl):null;
+ if(!youtubeId&&!media&&youtubeVideoId(original?.media))throw new RequestError('Upload or select the video file to switch from a YouTube link.');
+ if(!media&&!original&&!youtubeId)throw new RequestError('Upload a main file or add a YouTube video link.');
+ const type=youtubeId?'video':media?(media.mime.startsWith('video/')?'video':'image'):(original!.type as 'video'|'image');
+ const mediaUrl=youtubeId?youtubeWatchUrl(youtubeId):media?'/media/'+media.id:original!.media;
+ const posterUrl=poster?'/media/'+poster.id:youtubeId?(original?.media===mediaUrl?original.poster:youtubePoster(youtubeId)):type==='image'?mediaUrl:original?.poster||'/assets/hero.webp';
  const behindScenes=original?.behindScenes;
  const variants=original?.variants;
  const gallery=original?.gallery&&mediaUrl===original.media?original.gallery:undefined;
