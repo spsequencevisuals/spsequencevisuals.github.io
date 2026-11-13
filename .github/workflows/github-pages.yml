@@ -27,6 +27,8 @@ jobs:
       - uses: actions/configure-pages@v5
       - name: Check private owner studio
         run: npm test --prefix hosting/owner-service
+      - name: Check media links and playback
+        run: node --test tests/youtube-projects.test.mjs tests/youtube-playback.test.mjs tests/video-playback.test.mjs tests/design-collections.test.mjs
       - name: Build portable portfolio
         env:
           REPOSITORY: ${{ github.repository }}
