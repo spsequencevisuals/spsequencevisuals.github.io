@@ -1,4 +1,4 @@
-const CACHE='sp-visuals-v20';
+const CACHE='sp-visuals-v21';
 const SHELL=['/','/styles.css','/app.js','/features.js','/request-email.js','/video-playback.js','/youtube-player.js','/manifest.webmanifest','/assets/mark.svg','/assets/sp-sequence-logo.png','/assets/sp-sequence-cover.png','/assets/icon-192.png','/assets/icon-512.png','/assets/icon-maskable.png','/assets/hero.webp','/assets/creators-poster.webp','/assets/earn-poster.webp','/assets/smart-education-facilitators-v2-poster.webp','/assets/smart-education-facilitators-timeline-poster.webp','/assets/computer-basics-poster.webp','/assets/water-cycle-poster.webp','/assets/smart-education-talking-head-poster.webp','/assets/inside-the-edit-poster.webp','/assets/studio-sans.woff2','/assets/studio-sans-bold.woff2'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

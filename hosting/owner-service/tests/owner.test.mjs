@@ -8,7 +8,7 @@ test('linked YouTube projects stay private as drafts, publish and edit without u
  assert.ok(!(await(await handle(req('/api/portfolio'),env)).json()).projects.some(p=>p.id===project.id));
  response=await save({...saved,status:'published'});assert.equal(response.status,201);saved=(await response.json()).project;
  let feed=await(await handle(req('/api/portfolio'),env)).json();assert.ok(feed.projects.some(p=>p.id===project.id));
- const page=await(await handle(req('/work/'+project.id),env)).text();assert.match(page,/data-youtube-url/);assert.match(page,/Watch on YouTube/);
+ const page=await(await handle(req('/work/'+project.id),env)).text();assert.match(page,/data-youtube-url/);assert.match(page,/data-youtube-choice/);assert.match(page,/View video on YouTube/);
  assert.equal((await save({...saved,title:'Updated linked film'})).status,201);
  assert.equal((await save({...saved,videoSource:'file',youtubeUrl:''})).status,400);
  assert.equal((await save({...saved,status:'archived'})).status,201);feed=await(await handle(req('/api/portfolio'),env)).json();assert.ok(!feed.projects.some(p=>p.id===project.id));
