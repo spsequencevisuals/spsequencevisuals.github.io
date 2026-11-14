@@ -8,7 +8,7 @@ window.SPVideoPlayback=(()=>{
  function view(record){
   const video=record.video;
   if(hidden()||!video.isConnected)return null;
-  const dialog=document.querySelector('dialog[open]');
+  const dialogs=document.querySelectorAll('dialog[open]'),dialog=dialogs[dialogs.length-1];
   if(dialog&&!dialog.contains(video))return null;
   if(record.root&&!record.root.open)return null;
   if(record.hoverTarget&&hoverMedia?.matches&&!record.keyboardFocused&&(!record.hovered||(record.hoverTarget.matches&&!record.hoverTarget.matches(':hover'))))return null;
