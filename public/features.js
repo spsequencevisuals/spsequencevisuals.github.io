@@ -25,7 +25,7 @@ function prepareGridVideos(){
   if(window.SPYouTube?.videoId(project.media)){
    card.classList.add('video-card','youtube-card');picture.replaceChildren();
    const host=document.createElement('div');picture.append(host);
-   window.SPYouTube.mount(host,{url:project.media,title:project.title,hoverTarget:card,muted:true,loop:true,previewSeconds:preview?.seconds||0});
+   window.SPYouTube.mount(host,{url:project.media,title:project.title,poster:project.poster,muted:true,loop:true,previewSeconds:preview?.seconds||0});
    const order=document.createElement('button');order.type='button';order.className='project-order';order.dataset.contact='';order.dataset.service='Video editing';order.textContent='Request a similar edit ↗';card.querySelector('.project-meta').append(order);return;
   }
   card.classList.add('video-card');picture.querySelector('img').remove();picture.querySelector('.play-circle').remove();picture.querySelector('.duration').remove();
@@ -49,7 +49,7 @@ function prepareGridVideos(){
  window.SPVideoPlayback.refresh();
 }
 const hoverHint=matchMedia('(hover: hover) and (pointer: fine)');
-function updateVideoHint(){const hint=document.querySelector('.view-label');if(hint)hint.textContent=hoverHint.matches?'HOVER TO PLAY · CLICK TO OPEN':'VIDEOS PLAY MUTED · TAP TO OPEN';}
+function updateVideoHint(){const hint=document.querySelector('.view-label');if(hint)hint.textContent=hoverHint.matches?'YOUTUBE PLAYS ON SCROLL · OTHER VIDEOS ON HOVER':'VIDEOS PLAY MUTED · TAP FOR SOUND';}
 hoverHint.addEventListener('change',updateVideoHint);updateVideoHint();
 
 function initializeBooking(){
