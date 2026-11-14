@@ -17,7 +17,7 @@ function setup(BroadcastChannel,hoverMatches=false){
  window.IntersectionObserver=class{observe(){}unobserve(){}};
  const hoverQuery=new Events();hoverQuery.matches=hoverMatches;window.matchMedia=()=>hoverQuery;
  if(BroadcastChannel)window.BroadcastChannel=BroadcastChannel;
- document.hidden=false;document.modal=null;document.querySelector=()=>document.modal;
+ document.hidden=false;document.modal=null;document.modals=[];document.querySelector=()=>document.modal;document.querySelectorAll=()=>document.modals.length?document.modals:document.modal?[document.modal]:[];
  vm.runInNewContext(script,{window,document,Promise});
  const api=window.SPVideoPlayback;
  function video(name,top=150,height=300){
@@ -80,6 +80,13 @@ test('an open project excludes gallery previews and scrolling past its player pa
  const project=video('project',160);const modal={open:true,contains:v=>v===project,getBoundingClientRect:()=>({left:20,right:980,top:40,bottom:760})};document.modal=modal;
  api.register(project,{root:modal});api.play(project);flush();await settle();assert.equal(preview.paused,true);assert.equal(project.paused,false);
  project.top=-400;document.emit('scroll');flush();assert.equal(project.paused,true);assert.equal(preview.paused,true);
+});
+test('watch options above a project pause the player until the visitor returns to the project',async()=>{
+ const {api,video,flush,document}=setup(),player=video('project');
+ const project={open:true,contains:v=>v===player,getBoundingClientRect:()=>({left:20,right:980,top:40,bottom:760})};
+ const choice={open:true,contains:()=>false};document.modals=[project];api.register(player,{root:project});flush();await settle();assert.equal(player.paused,false);
+ document.modals=[project,choice];api.refresh();assert.equal(player.paused,true);
+ document.modals=[project];api.refresh();await settle();assert.equal(player.paused,false);
 });
 test('a replaced project cannot resume from an old play promise',async()=>{
  const {api,video,flush}=setup();const old=video('old');old.deferred=true;api.register(old);flush();api.unregister(old);old.isConnected=false;
